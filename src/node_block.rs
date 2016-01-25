@@ -61,6 +61,8 @@ pub struct State {
     circle_idx: IndexSlot,
     /// An index to use for our **Text** primitive graphics widget (for the label).
     text_idx: IndexSlot,
+
+    pos: [f64; 2],
 }
 
 /// A `&'static str` that can be used to uniquely identify our widget type.
@@ -71,7 +73,8 @@ pub const KIND: WidgetKind = "NodeBlock";
 pub enum Interaction {
     Normal,
     Highlighted,
-    Clicked,
+    Drag,
+    Selected,
 }
 
 impl Interaction {
@@ -80,7 +83,8 @@ impl Interaction {
         match *self {
             Interaction::Normal => color,
             Interaction::Highlighted => color.highlighted(),
-            Interaction::Clicked => color.clicked(),
+            Interaction::Drag => color.highlighted(),
+            Interaction::Selected => color.clicked(),
         }
     }
 }
@@ -89,7 +93,7 @@ impl Interaction {
 /// over the button and the previous interaction state.
 fn get_new_interaction(is_over: bool, prev: Interaction, mouse: Mouse) -> Interaction {
     use conrod::MouseButtonPosition::{Down, Up};
-    use self::Interaction::{Normal, Highlighted, Clicked};
+    use self::Interaction::{Normal, Highlighted, Drag, Selected};
     match (is_over, prev, mouse.left.position) {
         // LMB is down over the button. But the button wasn't Highlighted last
         // update. This means the user clicked somewhere outside the button and
@@ -101,16 +105,24 @@ fn get_new_interaction(is_over: bool, prev: Interaction, mouse: Mouse) -> Intera
         // just now, and we transition to the Clicked state. If it was clicked
         // before, that means the user is still holding LMB down from a previous
         // click, in which case the state remains Clicked.
-        (true,  _, Down) => Clicked,
-
-        // LMB is up. The mouse is hovering over the button. Regardless of what the
-        // state was last update, the state should definitely be Highlighted now.
-        (true,  _, Up)   => Highlighted,
+        (true,  _, Down) => Drag,
 
         // LMB is down, the mouse is not over the button, but the previous state was
         // Clicked. That means the user clicked the button and then moved the mouse
         // outside the button while holding LMB down. The button stays Clicked.
-        (false, Clicked, Down) => Clicked,
+        (false, Drag, Down) => Drag,
+
+        // Releasing LMB after dragging always transitions to selected
+        (_, Drag, Up) => Selected,
+
+        // Stay selected
+        (_, Selected, Up) => Selected,
+
+        // Unselect when user clicks outside
+        (false, Selected, Down) => Normal,
+        
+        // Highlight if mouse is over the node and LMB is released
+        (true, _, Up) => Highlighted,
 
         // If none of the above applies, then nothing interesting is happening with
         // this button.
@@ -187,6 +199,7 @@ impl<'a, F> Widget for NodeBlock<'a, F>
             interaction: Interaction::Normal,
             circle_idx: IndexSlot::new(),
             text_idx: IndexSlot::new(),
+            pos: [0.0, 0.0],
         }
     }
 
@@ -198,6 +211,8 @@ impl<'a, F> Widget for NodeBlock<'a, F>
     /// the last update. (E.g. it may have changed because the user moused over the
     /// button.) If the state has changed, return the new state. Else, return None.
     fn update<C: CharacterCache>(mut self, args: UpdateArgs<Self, C>) {
+        //self.xy(args.state.state.pos);
+
         let UpdateArgs { idx, state, rect, mut ui, style, .. } = args;
         let (xy, dim) = rect.xy_dim();
         let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
@@ -223,7 +238,7 @@ impl<'a, F> Widget for NodeBlock<'a, F>
         // button's state as of a moment ago. new_interaction is the updated state as
         // of right now. So this if statement is saying: If the button was clicked a
         // moment ago, and it's now highlighted, then the button has been activated.
-        if let (Interaction::Clicked, Interaction::Highlighted) =
+        if let (Interaction::Drag, Interaction::Selected) =
             (state.view().interaction, new_interaction)
         {
             // Recall that our NodeBlock struct includes maybe_react, which
@@ -237,12 +252,12 @@ impl<'a, F> Widget for NodeBlock<'a, F>
         // Here we check to see whether or not our button should capture the mouse.
         match (state.view().interaction, new_interaction) {
             // If the user has pressed the button we capture the mouse.
-            (Interaction::Highlighted, Interaction::Clicked) => {
+            (Interaction::Highlighted, Interaction::Drag) => {
                 ui.capture_mouse();
             },
             // If the user releases the button, we uncapture the mouse.
-            (Interaction::Clicked, Interaction::Highlighted) |
-            (Interaction::Clicked, Interaction::Normal)      => {
+            (Interaction::Drag, Interaction::Selected) |
+            (Interaction::Selected, Interaction::Normal) => {
                 ui.uncapture_mouse();
             },
             _ => (),

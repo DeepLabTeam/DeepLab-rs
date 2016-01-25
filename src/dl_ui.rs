@@ -20,6 +20,7 @@ pub struct DeepLabUi {
     pub ctx: matrix::Context,
 
     place_op: Option<Rc<Operation>>,
+    cursor: [f64; 2],
 }
 
 impl DeepLabUi {
@@ -46,10 +47,32 @@ impl DeepLabUi {
             ctx: matrix::Context::new(),
 
             place_op: None,
+            cursor: [0.0; 2],
         }
     }
 
+    pub fn event(&mut self, event: &input::Event) {
+        use piston::input::*;
+        event.mouse_cursor(|x, y| {
+            self.cursor = [x, y];
+        });
+        event.press(|button| {
+            //use piston::input::Button;
+            match button {
+                Button::Keyboard(key) => println!("Released keyboard key '{:?}'", key),
+                Button::Mouse(button) => {
+                    if let Some(ref place_op) = self.place_op {
+                        self.graph.add_node("asdf".to_string(), self.cursor, place_op.clone());
+                    }
+                },
+                _ => { },
+            }
+        });
+        self.graph.event(event);
+    }
+
     pub fn draw(&self, c: Context, gl: &mut GlGraphics) {
+        self.graph.draw(&c, gl);
         /*self.v48_graph.draw(c.trans(ui.win_w - 405.0, 5.0), gl, &mut *ui.glyph_cache.borrow_mut());
         self.a24_graph.draw(c.trans(ui.win_w - 405.0, 185.0), gl, &mut *ui.glyph_cache.borrow_mut());
         self.v12_graph.draw(c.trans(ui.win_w - 405.0, 365.0), gl, &mut *ui.glyph_cache.borrow_mut());

@@ -57,12 +57,14 @@ fn main() {
 
     for event in window.clone().events().ups(60) {
         ui.handle_event(&event);
+        deep_ui.event(&event);
         event.update(|_| {
             ui.set_widgets(|ui| deep_ui.set_widgets(ui));
         });
         event.render(|args| {
             gl.draw(args.viewport(), |c, gl| {
                 ui.draw(c, gl);
+                deep_ui.draw(c, gl);
             });
         });
     }
