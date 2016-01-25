@@ -1,19 +1,18 @@
-use dl;
 use matrix;
 
-use super::dl_ui::DeepLabUi;
+use super::graph_builder::GraphBuilder;
 use super::var_store::VarIndex;
 
 pub struct Operation {
     pub name: String,
     pub num_inputs: u64,
     pub num_outputs: u64,
-    pub build: Box<Fn(&DeepLabUi, &mut dl::Graph, &[Option<VarIndex>], &[Option<VarIndex>])>,
+    pub build: Box<Fn(&matrix::Context, &mut GraphBuilder, &[Option<VarIndex>], &[Option<VarIndex>])>,
 }
 
 impl Operation {
     pub fn new(name: String, num_inputs: u64, num_outputs: u64,
-               build: Box<Fn(&DeepLabUi, &mut dl::Graph, &[Option<VarIndex>], &[Option<VarIndex>])>)
+               build: Box<Fn(&matrix::Context, &mut GraphBuilder, &[Option<VarIndex>], &[Option<VarIndex>])>)
                -> Self {
         Operation {
             name: name,

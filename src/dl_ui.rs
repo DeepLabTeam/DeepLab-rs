@@ -16,8 +16,7 @@ use super::var_store::{VarStore, VarIndex};
 pub struct DeepLabUi {
     activation_blocks: [[Rc<Operation>; 2]; 2],
     graph: GraphBuilder,
-    pub vars: VarStore,
-    pub ctx: matrix::Context,
+    ctx: matrix::Context,
 
     place_op: Option<Rc<Operation>>,
     cursor: [f64; 2],
@@ -26,24 +25,23 @@ pub struct DeepLabUi {
 impl DeepLabUi {
     pub fn new() -> DeepLabUi {
         let mat_mul = Rc::new(Operation::new("MatMul".to_string(), 2, 1,
-            Box::new(|ui: &DeepLabUi,
-                      graph: &mut dl::Graph,
+            Box::new(|ctx: &matrix::Context,
+                      graph: &mut GraphBuilder,
                       _in: &[Option<VarIndex>],
                       _out: &[Option<VarIndex>]| {
-                let a = *_in[0].unwrap().get(&ui.vars);
-                let b = *_in[1].unwrap().get(&ui.vars);
-                let op = Box::new(dl::op::MatMul::new(&ui.ctx,
-                                                      _in[0].unwrap().get(&ui.vars).shape,
-                                                      _in[1].unwrap().get(&ui.vars).shape));
-                graph.add_node(&ui.ctx, op,
-                               vec![a.gpu.unwrap(), b.gpu.unwrap()],
-                               &[_out[0].unwrap().get(&ui.vars).shape]);
+                let a = *_in[0].unwrap().get(&graph.vars);
+                let b = *_in[1].unwrap().get(&graph.vars);
+                let op = Box::new(dl::op::MatMul::new(&ctx,
+                                                      a.shape,
+                                                      b.shape));
+                graph.graph.add_node(&ctx, op,
+                                     vec![a.gpu.unwrap(), b.gpu.unwrap()],
+                                     &[_out[0].unwrap().get(&graph.vars).shape]);
             })));
         DeepLabUi {
             activation_blocks: [[mat_mul.clone(), mat_mul.clone()],
                                 [mat_mul.clone(), mat_mul.clone()]],
             graph: GraphBuilder::new(),
-            vars: VarStore::new(),
             ctx: matrix::Context::new(),
 
             place_op: None,
@@ -68,7 +66,7 @@ impl DeepLabUi {
                 _ => { },
             }
         });
-        self.graph.event(event);
+        self.graph.event(event, self.cursor);
     }
 
     pub fn draw(&self, c: Context, gl: &mut GlGraphics) {

@@ -1,4 +1,5 @@
 use dl;
+use matrix;
 
 #[derive(Copy, Clone)]
 pub struct Variable {
@@ -28,6 +29,12 @@ impl VarStore {
 
     pub fn get_mut(&mut self, v: VarIndex) -> &mut Variable {
         &mut self.vars[v.0]
+    }
+
+    pub fn gpu_build(&mut self, ctx: &matrix::Context, graph: &mut dl::Graph) {
+        for var in &mut self.vars {
+            var.gpu = Some(graph.add_variable(ctx, var.shape));
+        }
     }
 }
 
