@@ -13,3 +13,4 @@ piston2d-opengl_graphics = "0.22.0"
 conrod = { version = "0.31.1", git = "https://github.com/PistonDevelopers/conrod" }
 deeplearn = { version = "*", git = "https://github.com/tedsta/deeplearn-rs" }
 matrix = { version = "*", git = "https://github.com/tedsta/matrix-rs" }
+vecmath = "*"

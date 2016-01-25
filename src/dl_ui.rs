@@ -9,6 +9,7 @@ use piston::input;
 use dl;
 
 use super::graph_builder::GraphBuilder;
+use super::node_block::NodeBlock;
 use super::op::Operation;
 use super::var_store::{VarStore, VarIndex};
 
@@ -72,6 +73,14 @@ impl DeepLabUi {
                                      .middle_of(UPPER)
                                      .set(TITLE, ui);
 
+        NodeBlock::new().color(color::rgb(1.0, 0.0, 0.0))
+                        .w_h(64.0, 64.0)
+                        .x_y(10.0, 10.0)
+                        .floating(true)
+                        .react(|| println!("Click"))
+                        //.mid_top_of(UPPER)
+                        .set(NODE, ui);
+
         let footer_wh = ui.wh_of(BLOCKS).unwrap();
         WidgetMatrix::new(2, 2)
             .w_h(footer_wh[0], footer_wh[1])
@@ -118,6 +127,7 @@ widget_ids! {
     LOWER,
 
     // Widget IDs
+    NODE,
     BLOCKS,
     ACTIVATION_BLOCK_MATRIX,
     RELU_B,

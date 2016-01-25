@@ -10,6 +10,7 @@ extern crate piston;
 extern crate graphics;
 extern crate opengl_graphics;
 extern crate glutin_window;
+extern crate vecmath;
 
 use conrod::{
     Theme,
@@ -28,6 +29,7 @@ use dl_ui::DeepLabUi;
 mod dl_ui;
 mod graph_builder;
 mod node;
+mod node_block;
 mod op;
 mod var_store;
 
