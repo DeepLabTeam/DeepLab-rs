@@ -6,7 +6,7 @@ use matrix;
 use piston::input;
 use opengl_graphics::GlGraphics;
 
-use super::node::Node;
+use super::node::{Node, NodeAction};
 use super::op::Operation;
 use super::var_store::VarStore;
 
@@ -14,6 +14,7 @@ pub struct GraphBuilder {
     pub graph: dl::Graph,
     pub vars: VarStore,
     nodes: Vec<Node>,
+    node_action: Option<(usize, NodeAction)>,
 }
 
 impl GraphBuilder {
@@ -22,6 +23,7 @@ impl GraphBuilder {
             graph: dl::Graph::new(),
             vars: VarStore::new(),
             nodes: vec![],
+            node_action: None,
         }
     }
 
@@ -32,8 +34,11 @@ impl GraphBuilder {
     }
 
     pub fn event(&mut self, event: &input::Event, cursor: [f64; 2]) {
-        for node in &mut self.nodes {
+        for (i, node) in self.nodes.iter_mut().enumerate() {
             node.event(event, cursor);
+            if let Some(action) = node.action {
+                self.node_action = Some((i, action));
+            }
         }
     }
 
