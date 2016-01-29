@@ -5,17 +5,9 @@ use piston::input;
 use opengl_graphics::GlGraphics;
 use vecmath;
 
-use super::graph_builder::GraphBuilder;
+use super::graph_builder::{GraphBuilder, NodeId};
 use super::op::Operation;
 use super::var_store::VarIndex;
-
-#[derive(Copy, Clone)]
-pub enum NodeAction {
-    DragInput(usize),
-    DragOutput(usize),
-    DropInput(usize),
-    DropOutput(usize),
-}
 
 pub struct Node {
     name: String,
@@ -56,6 +48,19 @@ impl Node {
                 _ => { },
             }
         });
+        event.release(|button| {
+            match button {
+                Button::Mouse(button) => {
+                    match button {
+                        mouse::MouseButton::Left => {
+                            self.on_lmb_released(mouse_over);
+                        },
+                        _ => { },
+                    }
+                },
+                _ => { },
+            }
+        });
     }
 
     pub fn on_lmb_clicked(&mut self, mouse_over: bool) {
@@ -76,6 +81,28 @@ impl Node {
             pos[1] += self.pos[1];
             if is_over_circle(pos, 4.0, pos) {
                 self.action = Some(NodeAction::DragOutput(i));
+            }
+        }
+    }
+
+    pub fn on_lmb_released(&mut self, mouse_over: bool) {
+        let input_spacing = 32.0 / (self.inputs.len() as f64);
+        for (i, input) in self.inputs.iter().enumerate() {
+            let mut pos = [-4.0, input_spacing*(i as f64) + input_spacing/2.0 - 4.0];
+            pos[0] += self.pos[0];
+            pos[1] += self.pos[1];
+            if is_over_circle(pos, 4.0, pos) {
+                self.action = Some(NodeAction::DropInput(i));
+            }
+        }
+
+        let output_spacing = 32.0 / (self.outputs.len() as f64);
+        for (i, output) in self.outputs.iter().enumerate() {
+            let mut pos = [64.0 - 4.0, output_spacing*(i as f64) + output_spacing/2.0 - 4.0];
+            pos[0] += self.pos[0];
+            pos[1] += self.pos[1];
+            if is_over_circle(pos, 4.0, pos) {
+                self.action = Some(NodeAction::DropOutput(i));
             }
         }
     }
@@ -127,6 +154,36 @@ impl Node {
 
     pub fn name(&self) -> &str {
         self.name.as_ref()
+    }
+}
+
+#[derive(Copy, Clone)]
+pub enum NodeAction {
+    DragInput(usize),
+    DragOutput(usize),
+    DropInput(usize),
+    DropOutput(usize),
+}
+
+impl NodeAction {
+    pub fn happened_before(&self, other: &Self, nodes: (NodeId, NodeId)) -> Option<(NodeId, NodeId)> {
+        use self::NodeAction::*;
+
+        match *self {
+            DragInput(_) => {
+                match *other {
+                    DropOutput(_) => { Some((nodes.0, nodes.1)) },
+                    _ => None,
+                }
+            },
+            DragOutput(_) => {
+                match *other {
+                    DropInput(_) => { Some((nodes.1, nodes.0)) },
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
     }
 }
 
