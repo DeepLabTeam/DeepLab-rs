@@ -6,6 +6,7 @@ use matrix;
 use piston::input;
 use opengl_graphics::GlGraphics;
 
+use super::dl_ui::Mouse;
 use super::node::{Node, NodeAction};
 use super::op::Operation;
 use super::var_store::VarStore;
@@ -33,10 +34,10 @@ impl GraphBuilder {
         self.nodes.push(Node::new(name, pos, op, num_in, num_out));
     }
 
-    pub fn event(&mut self, event: &input::Event, cursor: [f64; 2]) {
+    pub fn event(&mut self, event: &input::Event, mouse: &Mouse) {
         let mut new_action: Option<(NodeId, NodeAction)> = None;
         for (i, node) in self.nodes.iter_mut().enumerate() {
-            node.event(event, cursor);
+            node.event(event, mouse);
             if let Some(action) = node.action {
                 new_action = Some((NodeId(i), action));
                 break;
@@ -48,7 +49,12 @@ impl GraphBuilder {
                 if let Some((in_node, out_node)) =
                     old_action.happened_before(&new_action, (old_node, new_node)) {
                     // A connection was made
-                    // TODO
+                    //self.nodes[old_node.0].
+                    if in_node == new_node {
+                        println!(" -> ")
+                    } else {
+                        println!(" <- ")
+                    }
                 }
             }
         }
@@ -67,7 +73,7 @@ impl GraphBuilder {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct NodeId(usize);
 
 impl NodeId {

@@ -13,13 +13,29 @@ use super::node_block::NodeBlock;
 use super::op::Operation;
 use super::var_store::{VarStore, VarIndex};
 
+pub struct Mouse {
+    pub pos: [f64; 2],
+    pub lmb: bool,
+    pub rmb: bool,
+}
+
+impl Mouse {
+    pub fn new() -> Self {
+        Mouse {
+            pos: [0.0; 2],
+            lmb: false,
+            rmb: false,
+        }
+    }
+}
+
 pub struct DeepLabUi {
     activation_blocks: [[Rc<Operation>; 2]; 2],
     graph: GraphBuilder,
     ctx: matrix::Context,
 
     place_op: Option<Rc<Operation>>,
-    cursor: [f64; 2],
+    mouse: Mouse,
 }
 
 impl DeepLabUi {
@@ -45,28 +61,56 @@ impl DeepLabUi {
             ctx: matrix::Context::new(),
 
             place_op: None,
-            cursor: [0.0; 2],
+            mouse: Mouse::new(),
         }
     }
 
     pub fn event(&mut self, event: &input::Event) {
         use piston::input::*;
         event.mouse_cursor(|x, y| {
-            self.cursor = [x, y];
+            self.mouse.pos = [x, y];
         });
         event.press(|button| {
             //use piston::input::Button;
             match button {
-                Button::Keyboard(key) => println!("Released keyboard key '{:?}'", key),
+                Button::Keyboard(key) => println!("Pressed keyboard key '{:?}'", key),
                 Button::Mouse(button) => {
-                    if let Some(ref place_op) = self.place_op {
-                        self.graph.add_node("asdf".to_string(), self.cursor, place_op.clone());
+                    match button {
+                        mouse::MouseButton::Left => {
+                            self.mouse.lmb = true;
+                        },
+                        mouse::MouseButton::Right => {
+                            self.mouse.rmb = true;
+                            self.place_op = None;
+                        },
+                        _ => { },
                     }
                 },
                 _ => { },
             }
         });
-        self.graph.event(event, self.cursor);
+        event.release(|button| {
+            //use piston::input::Button;
+            match button {
+                Button::Keyboard(key) => println!("Released keyboard key '{:?}'", key),
+                Button::Mouse(button) => {
+                    match button {
+                        mouse::MouseButton::Left => {
+                            self.mouse.lmb = false;
+                            if let Some(ref place_op) = self.place_op {
+                                self.graph.add_node("asdf".to_string(), self.mouse.pos, place_op.clone());
+                            }
+                        },
+                        mouse::MouseButton::Right => {
+                            self.mouse.rmb = false;
+                        }
+                        _ => { },
+                    }
+                },
+                _ => { },
+            }
+        });
+        self.graph.event(event, &self.mouse);
     }
 
     pub fn draw(&self, c: Context, gl: &mut GlGraphics) {
