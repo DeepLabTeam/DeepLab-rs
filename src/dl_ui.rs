@@ -42,17 +42,18 @@ impl DeepLabUi {
     pub fn new() -> DeepLabUi {
         let mat_mul = Rc::new(Operation::new("MatMul".to_string(), 2, 1,
             Box::new(|ctx: &matrix::Context,
-                      graph: &mut GraphBuilder,
+                      graph: &mut dl::Graph,
+                      vars: &VarStore,
                       _in: &[Option<VarIndex>],
-                      _out: &[Option<VarIndex>]| {
-                let a = *_in[0].unwrap().get(&graph.vars);
-                let b = *_in[1].unwrap().get(&graph.vars);
+                      _out: &[VarIndex]| {
+                let a = *_in[0].unwrap().get(&vars);
+                let b = *_in[1].unwrap().get(&vars);
                 let op = Box::new(dl::op::MatMul::new(&ctx,
                                                       a.shape,
                                                       b.shape));
-                graph.graph.add_node(&ctx, op,
-                                     vec![a.gpu.unwrap(), b.gpu.unwrap()],
-                                     &[_out[0].unwrap().get(&graph.vars).shape]);
+                graph.add_node(&ctx, op,
+                               vec![a.gpu.unwrap(), b.gpu.unwrap()],
+                               &[_out[0].get(vars).shape])
             })));
         DeepLabUi {
             activation_blocks: [[mat_mul.clone(), mat_mul.clone()],

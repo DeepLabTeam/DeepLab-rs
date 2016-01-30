@@ -5,6 +5,7 @@ use matrix;
 pub struct Variable {
     pub shape: (u64, u64),
     pub gpu: Option<dl::VarIndex>,
+    managed: bool,
 }
 
 pub struct VarStore {
@@ -19,7 +20,12 @@ impl VarStore {
     }
 
     pub fn add(&mut self, shape: (u64, u64)) -> VarIndex {
-        self.vars.push(Variable { shape: shape, gpu: None });
+        self.vars.push(Variable { shape: shape, gpu: None, managed: false });
+        VarIndex(self.vars.len()-1)
+    }
+
+    pub fn add_managed(&mut self, shape: (u64, u64)) -> VarIndex {
+        self.vars.push(Variable { shape: shape, gpu: None, managed: true });
         VarIndex(self.vars.len()-1)
     }
 
@@ -33,7 +39,9 @@ impl VarStore {
 
     pub fn gpu_build(&mut self, ctx: &matrix::Context, graph: &mut dl::Graph) {
         for var in &mut self.vars {
-            var.gpu = Some(graph.add_variable(ctx, var.shape));
+            if var.managed {
+                var.gpu = Some(graph.add_variable(ctx, var.shape));
+            }
         }
     }
 }

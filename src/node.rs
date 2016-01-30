@@ -12,20 +12,20 @@ use super::var_store::VarIndex;
 
 pub struct Node {
     name: String,
-    op: Rc<Operation>,
-    inputs: Vec<Option<VarIndex>>,
-    outputs: Vec<Option<VarIndex>>,
+    pub op: Rc<Operation>,
+    pub inputs: Vec<Option<VarIndex>>,
+    pub outputs: Vec<VarIndex>,
     pos: [f64; 2],
     pub action: Option<NodeAction>,
 }
 
 impl Node {
-    pub fn new(name: String, pos: [f64; 2], op: Rc<Operation>, num_in: u64, num_out: u64) -> Self {
+    pub fn new(name: String, pos: [f64; 2], op: Rc<Operation>, num_in: u64, outs: Vec<VarIndex>) -> Self {
         Node {
             name: name,
             op: op,
             inputs: vec![None; num_in as usize],
-            outputs: vec![None; num_out as usize],
+            outputs: outs,
             pos: pos,
             action: None,
         }
@@ -135,7 +135,7 @@ impl Node {
     pub fn draw(&self, c: &graphics::Context, gl: &mut GlGraphics) {
         use graphics::{Ellipse, Rectangle, Transformed};
 
-        Rectangle::new([1.0, 0.0, 0.0, 1.0]).draw([self.pos[0], self.pos[1], 64.0, 32.0], &c.draw_state, c.transform, gl);
+        Rectangle::new([0.1, 0.3, 0.8, 1.0]).draw([self.pos[0], self.pos[1], 64.0, 32.0], &c.draw_state, c.transform, gl);
 
         let input_spacing = 32.0 / (self.inputs.len() as f64);
 
@@ -157,14 +157,7 @@ impl Node {
         for (i, output) in self.outputs.iter().enumerate() {
             let pos = [64.0 - 4.0, output_spacing*(i as f64) + output_spacing/2.0 - 4.0];
             let c = c.trans(self.pos[0], self.pos[1]);
-            match *output {
-                Some(output) => {
-                    Ellipse::new([1.0, 0.0, 0.0, 1.0]).draw([pos[0], pos[1], 8.0, 8.0], &c.draw_state, c.transform, gl);
-                },
-                None => {
-                    Ellipse::new([0.0, 0.0, 0.0, 1.0]).draw([pos[0], pos[1], 8.0, 8.0], &c.draw_state, c.transform, gl);
-                },
-            }
+            Ellipse::new([1.0, 0.0, 0.0, 1.0]).draw([pos[0], pos[1], 8.0, 8.0], &c.draw_state, c.transform, gl);
         }
     }
 
@@ -182,22 +175,22 @@ pub enum NodeAction {
 }
 
 impl NodeAction {
-    pub fn happened_before(&self, other: &Self, nodes: (NodeId, NodeId)) -> Option<(NodeId, NodeId)> {
+    pub fn happened_before(&self, other: &Self, nodes: (NodeId, NodeId)) -> Option<(NodeId, usize, NodeId, usize)> {
         use self::NodeAction::*;
 
         match *self {
-            DragInput(_) => {
+            DragOutput(send_index) => {
                 match *other {
-                    DropOutput(_) => { Some((nodes.0, nodes.1)) },
-                    _ => None,
-                }
-            },
-            DragOutput(_) => {
-                match *other {
-                    DropInput(_) => { Some((nodes.1, nodes.0)) },
+                    DropInput(recv_index) => { Some((nodes.0, send_index, nodes.1, recv_index)) },
                     _ => None,
                 }
             }
+            DragInput(recv_index) => {
+                match *other {
+                    DropOutput(send_index) => { Some((nodes.1, send_index, nodes.0, recv_index)) },
+                    _ => None,
+                }
+            },
             _ => None,
         }
     }
