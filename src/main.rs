@@ -29,7 +29,6 @@ use dl_ui::DeepLabUi;
 mod dl_ui;
 mod graph_builder;
 mod node;
-mod node_block;
 mod op;
 mod var_store;
 

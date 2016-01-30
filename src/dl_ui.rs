@@ -9,7 +9,6 @@ use piston::input;
 use dl;
 
 use super::graph_builder::GraphBuilder;
-use super::node_block::NodeBlock;
 use super::op::Operation;
 use super::var_store::{VarStore, VarIndex};
 
@@ -139,14 +138,6 @@ impl DeepLabUi {
                                      .middle_of(UPPER)
                                      .set(TITLE, ui);
 
-        NodeBlock::new().color(color::rgb(1.0, 0.0, 0.0))
-                        .w_h(64.0, 64.0)
-                        .x_y(10.0, 10.0)
-                        .floating(true)
-                        .react(|| println!("Click"))
-                        //.mid_top_of(UPPER)
-                        .set(NODE, ui);
-
         let footer_wh = ui.wh_of(BLOCKS).unwrap();
         WidgetMatrix::new(2, 2)
             .w_h(footer_wh[0], footer_wh[1])
@@ -164,13 +155,6 @@ impl DeepLabUi {
                         self.place_op = Some(op);
                     })
             }).set(ACTIVATION_BLOCK_MATRIX, ui);
-
-        // Time delay
-        /*Text::new("Time Delay: 0s")
-            .xy((-ui.win_w / 2.0) + 70.0, (ui.win_h / 2.0) - 150.0)
-            .font_size(18)
-            .color(self.bg_color.plain_contrast())
-            .set(TIME_DELAY, ui);*/
     }
 
     pub fn on_key_pressed(&mut self, key: input::Key) {
