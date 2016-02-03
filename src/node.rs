@@ -168,26 +168,37 @@ impl Node {
 
 #[derive(Copy, Clone)]
 pub enum NodeAction {
+    Drag,
     DragInput(usize),
     DragOutput(usize),
     DropInput(usize),
     DropOutput(usize),
 }
 
+pub enum NodeResponse {
+    Select,
+    SelectInput(usize),
+    SelectOutput(usize),
+    Connect(NodeId, usize, NodeId, usize),
+}
+
 impl NodeAction {
-    pub fn happened_before(&self, other: &Self, nodes: (NodeId, NodeId)) -> Option<(NodeId, usize, NodeId, usize)> {
+    pub fn happened_before(&self, other: &Self, nodes: (NodeId, NodeId)) -> Option<NodeResponse> {
         use self::NodeAction::*;
+        use self::NodeResponse::*;
 
         match *self {
             DragOutput(send_index) => {
                 match *other {
-                    DropInput(recv_index) => { Some((nodes.0, send_index, nodes.1, recv_index)) },
+                    DropInput(recv_index) => { Some(Connect(nodes.0, send_index, nodes.1, recv_index)) },
+                    DropOutput(i) => { Some(SelectOutput(i)) },
                     _ => None,
                 }
             }
             DragInput(recv_index) => {
                 match *other {
-                    DropOutput(send_index) => { Some((nodes.1, send_index, nodes.0, recv_index)) },
+                    DropOutput(send_index) => { Some(Connect(nodes.1, send_index, nodes.0, recv_index)) },
+                    DropInput(i) => { Some(SelectInput(i)) },
                     _ => None,
                 }
             },

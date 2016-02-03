@@ -7,9 +7,14 @@ use piston::input;
 use opengl_graphics::GlGraphics;
 
 use super::dl_ui::Mouse;
-use super::node::{Node, NodeAction};
+use super::node::{Node, NodeAction, NodeResponse};
 use super::op::Operation;
-use super::var_store::VarStore;
+use super::var_store::{VarIndex, VarStore};
+
+pub enum GraphAction {
+    SelectNode(NodeId),
+    SelectVariable(VarIndex),
+}
 
 pub struct GraphBuilder {
     pub graph: dl::Graph,
@@ -37,7 +42,9 @@ impl GraphBuilder {
         self.nodes.push(Node::new(name, pos, op, num_in, outs));
     }
 
-    pub fn event(&mut self, event: &input::Event, mouse: &Mouse) {
+    pub fn event(&mut self, event: &input::Event, mouse: &Mouse) -> Option<GraphAction> {
+        let mut graph_action = None;
+
         let mut new_action: Option<(NodeId, NodeAction)> = None;
         for (i, node) in self.nodes.iter_mut().enumerate() {
             node.event(event, mouse);
@@ -49,21 +56,42 @@ impl GraphBuilder {
 
         if let Some((old_node, old_action)) = self.node_action {
             if let Some((new_node, new_action)) = new_action {
-                if let Some((send_node, send_index, recv_node, recv_index)) =
-                    old_action.happened_before(&new_action, (old_node, new_node)) {
-                    // A connection was made
-                    let v = self.nodes[send_node.0].outputs[send_index];
-                    self.nodes[recv_node.0].inputs[recv_index] = Some(v);
-                    if recv_node == new_node {
-                        println!(" -> ")
-                    } else {
-                        println!(" <- ")
+                if let Some(response) = old_action.happened_before(&new_action,
+                                                                   (old_node, new_node)) {
+                    match response {
+                        NodeResponse::Connect(send_node, send_index, recv_node, recv_index) => {
+                            // A connection was made
+                            let v = self.nodes[send_node.0].outputs[send_index];
+                            self.nodes[recv_node.0].inputs[recv_index] = Some(v);
+                            if recv_node == new_node {
+                                println!(" -> ");
+                            } else {
+                                println!(" <- ");
+                            }
+                        },
+                        NodeResponse::Select => {
+                            // Select the node
+                            graph_action = Some(GraphAction::SelectNode(new_node));
+                        },
+                        NodeResponse::SelectInput(i) => {
+                            // Select one of the node's input's
+                            if let Some(v) = self.nodes[new_node.0].inputs[i] {
+                                graph_action = Some(GraphAction::SelectVariable(v));
+                            }
+                        },
+                        NodeResponse::SelectOutput(i) => {
+                            // Select one of the node's output's
+                            let v = self.nodes[new_node.0].outputs[i];
+                            graph_action = Some(GraphAction::SelectVariable(v));
+                        },
                     }
                 }
             }
         }
 
         self.node_action = new_action;
+
+        graph_action
     }
 
     pub fn draw(&self, c: &graphics::Context, gl: &mut GlGraphics) {

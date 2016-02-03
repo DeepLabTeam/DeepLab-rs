@@ -40,20 +40,28 @@ pub struct DeepLabUi {
 impl DeepLabUi {
     pub fn new() -> DeepLabUi {
         let mat_mul = Rc::new(Operation::new("MatMul".to_string(), 2, 1,
-            Box::new(|ctx: &matrix::Context,
+            |ctx: &matrix::Context,
                       graph: &mut dl::Graph,
                       vars: &VarStore,
                       _in: &[Option<VarIndex>],
                       _out: &[VarIndex]| {
                 let a = *_in[0].unwrap().get(&vars);
                 let b = *_in[1].unwrap().get(&vars);
-                let op = Box::new(dl::op::MatMul::new(&ctx,
-                                                      a.shape,
-                                                      b.shape));
+                let op = Box::new(dl::op::MatMul::new(&ctx, a.shape, b.shape));
                 graph.add_node(&ctx, op,
                                vec![a.gpu.unwrap(), b.gpu.unwrap()],
                                &[_out[0].get(vars).shape])
-            })));
+            }));
+        /*let variable = Rc::new(Operation::new("Variable".to_string(), 0, 1,
+            |ctx: &matrix::Context,
+                      graph: &mut dl::Graph,
+                      vars: &VarStore,
+                      _in: &[Option<VarIndex>],
+                      _out: &[VarIndex]| {
+                graph.add_node(&ctx, op,
+                               vec![a.gpu.unwrap(), b.gpu.unwrap()],
+                               &[_out[0].get(vars).shape])
+            }));*/
         DeepLabUi {
             activation_blocks: [[mat_mul.clone(), mat_mul.clone()],
                                 [mat_mul.clone(), mat_mul.clone()]],
@@ -122,7 +130,7 @@ impl DeepLabUi {
     }
 
     pub fn set_widgets<'a>(&mut self, ui: &mut Ui<GlyphCache<'a>>) {
-        use conrod::{color, Button, Canvas, Colorable, Labelable, Positionable, Sizeable, Tabs, Text, Widget, WidgetMatrix};
+        use conrod::{color, Button, Canvas, Colorable, Frameable, Labelable, Positionable, Sizeable, Slider, Tabs, Text, Widget, WidgetMatrix};
 
         // Construct our main `Canvas` tree.
         Canvas::new().flow_down(&[
@@ -130,6 +138,7 @@ impl DeepLabUi {
             (LOWER, Canvas::new().color(color::rgb(1.0, 0.8, 1.0)).scroll_kids_vertically().flow_right(&[
                 (BLOCKS, Canvas::new().color(color::rgb(0.8, 1.0, 1.0)).pad_bottom(10.0)),
                 (RELU_B, Canvas::new().color(color::rgb(0.8, 1.0, 0.8)).pad_bottom(10.0)),
+                (VAR_MANIP, Canvas::new().color(color::rgb(0.8, 0.2, 0.8)).pad_bottom(10.0).pad_left(10.0)),
             ])),
         ]).set(MASTER, ui);
 
@@ -137,6 +146,13 @@ impl DeepLabUi {
                                      .font_size(48)
                                      .middle_of(UPPER)
                                      .set(TITLE, ui);
+
+        Button::new().rgb(0.3, 0.3, 0.8)
+                     .label("Build Graph")
+                     .top_left_of(UPPER)
+                     .react(|| {
+                         self.graph.gpu_build(&self.ctx);
+                     }).set(BUILD_BTN, ui);
 
         let footer_wh = ui.wh_of(BLOCKS).unwrap();
         WidgetMatrix::new(2, 2)
@@ -155,6 +171,16 @@ impl DeepLabUi {
                         self.place_op = Some(op);
                     })
             }).set(ACTIVATION_BLOCK_MATRIX, ui);
+
+        // Build the variable manipulator
+        Slider::new(0.5, 0.0, 1.0)
+            .w_h(30.0, 150.0)
+            .mid_left_of(VAR_MANIP)
+            .rgb(0.5, 0.3, 0.6)
+            .frame(1.0)
+            .react(|val| {
+                // TODO
+            }).set(VAR_SLIDER, ui);
     }
 
     pub fn on_key_pressed(&mut self, key: input::Key) {
@@ -177,6 +203,7 @@ widget_ids! {
     LOWER,
 
     // Widget IDs
+    BUILD_BTN,
     NODE,
     BLOCKS,
     ACTIVATION_BLOCK_MATRIX,
@@ -184,4 +211,11 @@ widget_ids! {
     TITLE,
     MATMUL,
     RELU,
+
+    // Variable manipulator
+    VAR_MANIP,
+    VAR_SLIDER,
+    VAR_MATRIX,
+    VAR_TRAINABLE,
+    VAR_DATASET,
 }
