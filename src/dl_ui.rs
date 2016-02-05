@@ -41,30 +41,29 @@ impl DeepLabUi {
     pub fn new() -> DeepLabUi {
         let mat_mul = Rc::new(Operation::new("MatMul".to_string(), 2, 1,
             |ctx: &matrix::Context,
-                      graph: &mut dl::Graph,
-                      vars: &VarStore,
-                      _in: &[Option<VarIndex>],
-                      _out: &[VarIndex]| {
+             graph: &mut dl::Graph,
+             vars: &mut VarStore,
+             _in: &[Option<VarIndex>],
+             _out: &[VarIndex]| {
                 let a = *_in[0].unwrap().get(&vars);
                 let b = *_in[1].unwrap().get(&vars);
                 let op = Box::new(dl::op::MatMul::new(&ctx, a.shape, b.shape));
-                graph.add_node(&ctx, op,
-                               vec![a.gpu.unwrap(), b.gpu.unwrap()],
-                               &[_out[0].get(vars).shape])
+                let node = graph.add_node(&ctx, op,
+                                          vec![a.gpu.unwrap(), b.gpu.unwrap()],
+                                          &[_out[0].get(vars).shape]);
+                _out[0].get_mut(vars).gpu = Some(node.get(&graph).outputs[0]);
             }));
-        /*let variable = Rc::new(Operation::new("Variable".to_string(), 0, 1,
+        let variable = Rc::new(Operation::new("Variable".to_string(), 0, 1,
             |ctx: &matrix::Context,
-                      graph: &mut dl::Graph,
-                      vars: &VarStore,
-                      _in: &[Option<VarIndex>],
-                      _out: &[VarIndex]| {
-                graph.add_node(&ctx, op,
-                               vec![a.gpu.unwrap(), b.gpu.unwrap()],
-                               &[_out[0].get(vars).shape])
-            }));*/
+             graph: &mut dl::Graph,
+             vars: &mut VarStore,
+             _in: &[Option<VarIndex>],
+             _out: &[VarIndex]| {
+                 _out[0].get_mut(vars).gpu = Some(graph.add_variable(ctx, (1,1)));
+            }));
         DeepLabUi {
             activation_blocks: [[mat_mul.clone(), mat_mul.clone()],
-                                [mat_mul.clone(), mat_mul.clone()]],
+                                [variable.clone(), mat_mul.clone()]],
             graph: GraphBuilder::new(),
             ctx: matrix::Context::new(),
 

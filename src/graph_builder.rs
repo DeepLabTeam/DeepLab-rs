@@ -103,11 +103,8 @@ impl GraphBuilder {
     pub fn gpu_build(&mut self, ctx: &matrix::Context) {
         self.vars.gpu_build(ctx, &mut self.graph);
 
-        for node in &self.nodes {
-            let node_gpu = (node.op.build)(ctx, &mut self.graph, &self.vars, &node.inputs, &node.outputs);
-            for (i, out) in node.outputs.iter().enumerate() {
-                out.get_mut(&mut self.vars).gpu = Some(node_gpu.get(&self.graph).outputs[i]);
-            }
+        for node in &mut self.nodes {
+            (node.op.build)(ctx, &mut self.graph, &mut self.vars, &node.inputs, &node.outputs);
         }
     }
 }
