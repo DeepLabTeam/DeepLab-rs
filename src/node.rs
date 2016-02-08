@@ -100,22 +100,16 @@ impl Node {
     pub fn on_lmb_released(&mut self, mouse: &Mouse, mouse_over: bool) {
         self.action = None;
 
-        let input_spacing = 32.0 / (self.inputs.len() as f64);
         for (i, input) in self.inputs.iter().enumerate() {
-            let mut pos = [0.0, input_spacing*(i as f64) + input_spacing/2.0];
-            pos[0] += self.pos[0];
-            pos[1] += self.pos[1];
+            let pos = self.get_input_pos(i);
             if is_over_circle(pos, 5.0, mouse.pos) {
                 self.action = Some(NodeAction::DropInput(i));
                 println!("Drop input");
             }
         }
 
-        let output_spacing = 32.0 / (self.outputs.len() as f64);
         for (i, output) in self.outputs.iter().enumerate() {
-            let mut pos = [64.0, output_spacing*(i as f64) + output_spacing/2.0];
-            pos[0] += self.pos[0];
-            pos[1] += self.pos[1];
+            let pos = self.get_output_pos(i);
             if is_over_circle(pos, 5.0, mouse.pos) {
                 self.action = Some(NodeAction::DropOutput(i));
                 println!("Drop output");
@@ -137,11 +131,10 @@ impl Node {
 
         Rectangle::new([0.1, 0.3, 0.8, 1.0]).draw([self.pos[0], self.pos[1], 64.0, 32.0], &c.draw_state, c.transform, gl);
 
-        let input_spacing = 32.0 / (self.inputs.len() as f64);
-
         for (i, input) in self.inputs.iter().enumerate() {
-            let pos = [-4.0, input_spacing*(i as f64) + input_spacing/2.0 - 4.0];
-            let c = c.trans(self.pos[0], self.pos[1]);
+            let mut pos = self.get_input_pos(i);
+            pos[0] -= 4.0;
+            pos[1] -= 4.0;
             match *input {
                 Some(input) => {
                     Ellipse::new([1.0, 0.0, 0.0, 1.0]).draw([pos[0], pos[1], 8.0, 8.0], &c.draw_state, c.transform, gl);
@@ -152,17 +145,32 @@ impl Node {
             }
         }
 
-        let output_spacing = 32.0 / (self.outputs.len() as f64);
-
         for (i, output) in self.outputs.iter().enumerate() {
-            let pos = [64.0 - 4.0, output_spacing*(i as f64) + output_spacing/2.0 - 4.0];
-            let c = c.trans(self.pos[0], self.pos[1]);
+            let mut pos = self.get_output_pos(i);
+            pos[0] -= 4.0;
+            pos[1] -= 4.0;
             Ellipse::new([1.0, 0.0, 0.0, 1.0]).draw([pos[0], pos[1], 8.0, 8.0], &c.draw_state, c.transform, gl);
         }
     }
 
     pub fn name(&self) -> &str {
         self.name.as_ref()
+    }
+
+    pub fn get_input_pos(&self, i: usize) -> [f64; 2] {
+        let input_spacing = 32.0 / (self.inputs.len() as f64);
+        let mut pos = [0.0, input_spacing*(i as f64) + input_spacing/2.0];
+        pos[0] += self.pos[0];
+        pos[1] += self.pos[1];
+        pos
+    }
+
+    pub fn get_output_pos(&self, i: usize) -> [f64; 2] {
+        let output_spacing = 32.0 / (self.outputs.len() as f64);
+        let mut pos = [64.0, output_spacing*(i as f64) + output_spacing/2.0];
+        pos[0] += self.pos[0];
+        pos[1] += self.pos[1];
+        pos
     }
 }
 
