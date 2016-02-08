@@ -133,7 +133,10 @@ impl DeepLabUi {
 
         // Construct our main `Canvas` tree.
         Canvas::new().flow_down(&[
-            (UPPER, Canvas::new().color(color::rgb(1.0, 1.0, 0.8)).pad_bottom(20.0)),
+            (UPPER, Canvas::new().flow_down(&[
+                (TOOL_BAR, Canvas::new().color(color::rgb(0.7, 0.7, 0.7)).length(48.0)),
+                (GRAPH_AREA, Canvas::new().color(color::rgb(1.0, 1.0, 0.8))),
+            ])),
             (LOWER, Canvas::new().color(color::rgb(1.0, 0.8, 1.0)).scroll_kids_vertically().flow_right(&[
                 (BLOCKS, Canvas::new().color(color::rgb(0.8, 1.0, 1.0)).pad_bottom(10.0)),
                 (RELU_B, Canvas::new().color(color::rgb(0.8, 1.0, 0.8)).pad_bottom(10.0)),
@@ -141,14 +144,14 @@ impl DeepLabUi {
             ])),
         ]).set(MASTER, ui);
 
-        Text::new("Fancy Neural Net").color(color::rgb(0.0, 0.0, 0.0))
+        /*Text::new("Fancy Neural Net").color(color::rgb(0.0, 0.0, 0.0))
                                      .font_size(48)
-                                     .middle_of(UPPER)
-                                     .set(TITLE, ui);
+                                     .middle_of(GRAPH_AREA)
+                                     .set(TITLE, ui);*/
 
         Button::new().rgb(0.3, 0.3, 0.8)
                      .label("Build Graph")
-                     .top_left_of(UPPER)
+                     .middle_of(TOOL_BAR)
                      .react(|| {
                          self.graph.gpu_build(&self.ctx);
                      }).set(BUILD_BTN, ui);
@@ -198,6 +201,8 @@ impl DeepLabUi {
 widget_ids! {
     // Canvas IDs
     MASTER,
+    TOOL_BAR,
+    GRAPH_AREA,
     UPPER,
     LOWER,
 

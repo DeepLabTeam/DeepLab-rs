@@ -19,6 +19,7 @@ pub enum GraphAction {
 pub struct GraphBuilder {
     pub graph: dl::Graph,
     pub vars: VarStore,
+    dim_vars: Vec<usize>,
     nodes: Vec<Node>,
     node_action: Option<(NodeId, NodeAction)>,
 }
@@ -28,6 +29,7 @@ impl GraphBuilder {
         GraphBuilder {
             graph: dl::Graph::new(),
             vars: VarStore::new(),
+            dim_vars: vec![],
             nodes: vec![],
             node_action: None,
         }
@@ -115,5 +117,14 @@ pub struct NodeId(usize);
 impl NodeId {
     pub fn get<'a>(&self, graph: &'a GraphBuilder) -> &'a Node {
         &graph.nodes[self.0]
+    }
+}
+
+#[derive(Copy, Clone, PartialEq)]
+pub struct DimVar(usize);
+
+impl DimVar {
+    pub fn get<'a>(&self, graph: &'a GraphBuilder) -> &'a usize {
+        &graph.dim_vars[self.0]
     }
 }
