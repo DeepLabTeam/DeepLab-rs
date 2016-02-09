@@ -3,9 +3,8 @@ use matrix;
 
 #[derive(Copy, Clone)]
 pub struct Variable {
-    pub shape: (u64, u64),
+    pub shape: (usize, usize),
     pub gpu: Option<dl::VarIndex>,
-    managed: bool,
 }
 
 pub struct VarStore {
@@ -19,13 +18,8 @@ impl VarStore {
         }
     }
 
-    pub fn add(&mut self, shape: (u64, u64)) -> VarIndex {
-        self.vars.push(Variable { shape: shape, gpu: None, managed: false });
-        VarIndex(self.vars.len()-1)
-    }
-
-    pub fn add_managed(&mut self, shape: (u64, u64)) -> VarIndex {
-        self.vars.push(Variable { shape: shape, gpu: None, managed: true });
+    pub fn add(&mut self, shape: (usize, usize)) -> VarIndex {
+        self.vars.push(Variable { shape: shape, gpu: None });
         VarIndex(self.vars.len()-1)
     }
 
@@ -35,14 +29,6 @@ impl VarStore {
 
     pub fn get_mut(&mut self, v: VarIndex) -> &mut Variable {
         &mut self.vars[v.0]
-    }
-
-    pub fn gpu_build(&mut self, ctx: &matrix::Context, graph: &mut dl::Graph) {
-        for var in &mut self.vars {
-            if var.managed {
-                var.gpu = Some(graph.add_variable(ctx, var.shape));
-            }
-        }
     }
 }
 

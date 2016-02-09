@@ -126,8 +126,6 @@ impl GraphBuilder {
     }
 
     pub fn gpu_build(&mut self, ctx: &matrix::Context) {
-        self.vars.gpu_build(ctx, &mut self.graph);
-
         for node in &mut self.nodes {
             (node.op.build)(ctx, &mut self.graph, &mut self.vars, &node.inputs, &node.outputs);
         }

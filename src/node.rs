@@ -20,7 +20,7 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn new(name: String, pos: [f64; 2], op: Rc<Operation>, num_in: u64, outs: Vec<VarIndex>) -> Self {
+    pub fn new(name: String, pos: [f64; 2], op: Rc<Operation>, num_in: usize, outs: Vec<VarIndex>) -> Self {
         Node {
             name: name,
             op: op,

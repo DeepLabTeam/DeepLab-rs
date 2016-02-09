@@ -48,7 +48,7 @@ impl DeepLabUi {
              _out: &[VarIndex]| {
                 let a = *_in[0].unwrap().get(&vars);
                 let b = *_in[1].unwrap().get(&vars);
-                let op = Box::new(dl::op::MatMul::new(&ctx, a.shape, b.shape));
+                let op = dl::op::MatMul::new(&ctx, a.shape, b.shape);
                 let node = graph.add_node(&ctx, op,
                                           vec![a.gpu.unwrap(), b.gpu.unwrap()],
                                           &[_out[0].get(vars).shape]);
@@ -60,7 +60,7 @@ impl DeepLabUi {
              vars: &mut VarStore,
              _in: &[Option<VarIndex>],
              _out: &[VarIndex]| {
-                 _out[0].get_mut(vars).gpu = Some(graph.add_variable(ctx, (1,1)));
+                 _out[0].get_mut(vars).gpu = Some(graph.add_variable(ctx, (1, 1), dl::init::Normal(0.5, 0.2)));
             }));
         DeepLabUi {
             activation_blocks: [[mat_mul.clone(), mat_mul.clone()],
@@ -184,7 +184,7 @@ impl DeepLabUi {
             //let var_rows = gpu_var.get(&self.graph.graph).get(&self.ctx).rows();
             //let var_cols = gpu_var.get(&self.graph.graph).get(&self.ctx).columns();
 
-            Slider::new(var_val, 0.0, 10.0)
+            Slider::new(var_val, 0.0, 1.0)
                 .w_h(30.0, 150.0)
                 .mid_left_of(VAR_MANIP)
                 .rgb(0.5, 0.3, 0.6)
