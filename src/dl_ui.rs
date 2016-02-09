@@ -8,7 +8,7 @@ use opengl_graphics::glyph_cache::GlyphCache;
 use piston::input;
 use dl;
 
-use super::graph_builder::GraphBuilder;
+use super::graph_builder::{GraphAction, GraphBuilder};
 use super::op::Operation;
 use super::var_store::{VarStore, VarIndex};
 
@@ -34,6 +34,7 @@ pub struct DeepLabUi {
     ctx: matrix::Context,
 
     place_op: Option<Rc<Operation>>,
+    sel_var: Option<VarIndex>, // Selected variable
     mouse: Mouse,
 }
 
@@ -68,6 +69,7 @@ impl DeepLabUi {
             ctx: matrix::Context::new(),
 
             place_op: None,
+            sel_var: None,
             mouse: Mouse::new(),
         }
     }
@@ -117,15 +119,16 @@ impl DeepLabUi {
                 _ => { },
             }
         });
-        self.graph.event(event, &self.mouse);
+        if let Some(graph_action) = self.graph.event(event, &self.mouse) {
+            match graph_action {
+                GraphAction::SelectNode(n) => { },
+                GraphAction::SelectVariable(v) => { self.sel_var = Some(v); },
+            }
+        }
     }
 
     pub fn draw(&self, c: Context, gl: &mut GlGraphics) {
         self.graph.draw(&c, gl);
-        /*self.v48_graph.draw(c.trans(ui.win_w - 405.0, 5.0), gl, &mut *ui.glyph_cache.borrow_mut());
-        self.a24_graph.draw(c.trans(ui.win_w - 405.0, 185.0), gl, &mut *ui.glyph_cache.borrow_mut());
-        self.v12_graph.draw(c.trans(ui.win_w - 405.0, 365.0), gl, &mut *ui.glyph_cache.borrow_mut());
-        self.motor_temp_graph.draw(c.trans(ui.win_w - 405.0, 545.0), gl, &mut *ui.glyph_cache.borrow_mut());*/
     }
 
     pub fn set_widgets<'a>(&mut self, ui: &mut Ui<GlyphCache<'a>>) {
@@ -175,7 +178,13 @@ impl DeepLabUi {
             }).set(ACTIVATION_BLOCK_MATRIX, ui);
 
         // Build the variable manipulator
-        Slider::new(0.5, 0.0, 1.0)
+        let var_val =
+            if let Some(sel_var) = self.sel_var {
+                *sel_var.get(&self.graph.vars).gpu.unwrap().get(&self.graph.graph).get(&self.ctx).get(0, 0)
+            } else {
+                0.5
+            };
+        Slider::new(var_val, 0.0, 1.0)
             .w_h(30.0, 150.0)
             .mid_left_of(VAR_MANIP)
             .rgb(0.5, 0.3, 0.6)

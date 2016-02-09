@@ -21,6 +21,7 @@ pub struct GraphBuilder {
     pub vars: VarStore,
     dim_vars: Vec<usize>,
     nodes: Vec<Node>,
+    edges: Vec<(NodeId, usize, NodeId, usize)>,
     node_action: Option<(NodeId, NodeAction)>,
 }
 
@@ -31,6 +32,7 @@ impl GraphBuilder {
             vars: VarStore::new(),
             dim_vars: vec![],
             nodes: vec![],
+            edges: vec![],
             node_action: None,
         }
     }
@@ -57,14 +59,15 @@ impl GraphBuilder {
         }
 
         if let Some((old_node, old_action)) = self.node_action {
-            if let Some((new_node, new_action)) = new_action {
-                if let Some(response) = old_action.happened_before(&new_action,
+            if let Some((new_node, _new_action)) = new_action {
+                if let Some(response) = old_action.happened_before(&_new_action,
                                                                    (old_node, new_node)) {
                     match response {
                         NodeResponse::Connect(send_node, send_index, recv_node, recv_index) => {
                             // A connection was made
                             let v = self.nodes[send_node.0].outputs[send_index];
                             self.nodes[recv_node.0].inputs[recv_index] = Some(v);
+                            self.edges.push((send_node, send_index, recv_node, recv_index));
                             if recv_node == new_node {
                                 println!(" -> ");
                             } else {
@@ -87,7 +90,16 @@ impl GraphBuilder {
                             graph_action = Some(GraphAction::SelectVariable(v));
                         },
                     }
+                    new_action = None;
                 }
+            }
+        }
+
+        if let Some((_, _new_action)) = new_action {
+            match _new_action {
+                NodeAction::DropInput(_) => { new_action = None; },
+                NodeAction::DropOutput(_) => { new_action = None; },
+                _ => { },
             }
         }
 
@@ -97,6 +109,17 @@ impl GraphBuilder {
     }
 
     pub fn draw(&self, c: &graphics::Context, gl: &mut GlGraphics) {
+        use graphics::Line;
+
+        for &(send_node, send_index, recv_node, recv_index) in &self.edges {
+            let start_pos = send_node.get(self).get_output_pos(send_index);
+            let end_pos = recv_node.get(self).get_input_pos(recv_index);
+
+            Line::new([1.0, 0.0, 0.0, 1.0], 1.0).draw([start_pos[0], start_pos[1],
+                                                  end_pos[0], end_pos[1]],
+                                                 &c.draw_state, c.transform, gl);
+        }
+
         for node in &self.nodes {
             node.draw(c, gl);
         }

@@ -117,15 +117,6 @@ impl Node {
         }
     }
 
-    /*pub fn maybe_input_action(&mut self, mouse_over: bool, lmb: bool) {
-        use NodeAction::*;
-
-        match (self.action, mouse_over, lmb) {
-            (Idle, true, true) => {
-            },
-        }
-    }*/
-
     pub fn draw(&self, c: &graphics::Context, gl: &mut GlGraphics) {
         use graphics::{Ellipse, Rectangle, Transformed};
 
