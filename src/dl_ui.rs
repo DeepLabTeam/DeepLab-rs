@@ -34,7 +34,7 @@ pub struct DeepLabUi {
     ctx: matrix::Context,
 
     place_op: Option<Rc<Operation>>,
-    sel_var: Option<VarIndex>, // Selected variable
+    sel_var: Option<(VarIndex, Vec<usize>)>, // Selected variable
     mouse: Mouse,
 }
 
@@ -122,7 +122,7 @@ impl DeepLabUi {
         if let Some(graph_action) = self.graph.event(event, &self.mouse) {
             match graph_action {
                 GraphAction::SelectNode(n) => { },
-                GraphAction::SelectVariable(v) => { self.sel_var = Some(v); },
+                GraphAction::SelectVariable(v) => { self.sel_var = Some((v, vec![0, 0])); },
             }
         }
     }
@@ -178,20 +178,37 @@ impl DeepLabUi {
             }).set(ACTIVATION_BLOCK_MATRIX, ui);
 
         // Build the variable manipulator
-        let var_val =
-            if let Some(sel_var) = self.sel_var {
-                *sel_var.get(&self.graph.vars).gpu.unwrap().get(&self.graph.graph).get(&self.ctx).get(0, 0)
-            } else {
-                0.5
-            };
-        Slider::new(var_val, 0.0, 1.0)
-            .w_h(30.0, 150.0)
-            .mid_left_of(VAR_MANIP)
-            .rgb(0.5, 0.3, 0.6)
-            .frame(1.0)
-            .react(|val| {
-                // TODO
-            }).set(VAR_SLIDER, ui);
+        if let Some((sel_var, ref coords)) = self.sel_var {
+            let gpu_var = sel_var.get(&self.graph.vars).gpu.unwrap();
+            let var_val = *gpu_var.get(&self.graph.graph).get(&self.ctx).get(coords[0], coords[1]);
+            //let var_rows = gpu_var.get(&self.graph.graph).get(&self.ctx).rows();
+            //let var_cols = gpu_var.get(&self.graph.graph).get(&self.ctx).columns();
+
+            Slider::new(var_val, 0.0, 10.0)
+                .w_h(30.0, 150.0)
+                .mid_left_of(VAR_MANIP)
+                .rgb(0.5, 0.3, 0.6)
+                .frame(1.0)
+                .react(|val| {
+                    // TODO
+                }).set(VAR_SLIDER, ui);
+
+            /*WidgetMatrix::new(2, 2)
+                .mid_top_of(VAR_MANIP)
+                .each_widget(|n, col, row| {
+                    let op: Rc<Operation> = {
+                        let _row: &[Rc<Operation>; 2] = &self.activation_blocks[row];
+                        let op: &Rc<Operation> = &_row[col];
+                        op.clone()
+                    };
+                    Button::new()
+                        .rgb(0.3, 0.8, 0.3)
+                        .label(op.name.clone().as_ref())
+                        .react(|| {
+                            self.place_op = Some(op);
+                        })
+                }).set(ACTIVATION_BLOCK_MATRIX, ui);*/
+        }
     }
 
     pub fn on_key_pressed(&mut self, key: input::Key) {
