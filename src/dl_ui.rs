@@ -49,10 +49,41 @@ impl DeepLabUi {
                 let a = *_in[0].unwrap().get(&vars);
                 let b = *_in[1].unwrap().get(&vars);
                 let op = dl::op::MatMul::new(&ctx, a.shape, b.shape);
-                let node = graph.add_node(&ctx, op,
+                let node = graph.add_node(ctx, op,
                                           vec![a.gpu.unwrap(), b.gpu.unwrap()],
                                           &[_out[0].get(vars).shape]);
                 _out[0].get_mut(vars).gpu = Some(node.get(&graph).outputs[0]);
+            }));
+        let relu = Rc::new(Operation::new("ReLU".to_string(), 1, 1,
+            |ctx: &matrix::Context,
+             graph: &mut dl::Graph,
+             vars: &mut VarStore,
+             _in: &[Option<VarIndex>],
+             _out: &[VarIndex]| {
+                let a = *_in[0].unwrap().get(&vars);
+                let op = dl::op::Relu::new();
+                let node = graph.add_node(ctx, op,
+                                          vec![a.gpu.unwrap()],
+                                          &[_out[0].get(vars).shape]);
+                _out[0].get_mut(vars).gpu = Some(node.get(&graph).outputs[0]);
+            }));
+        let mse = Rc::new(Operation::new("MSE".to_string(), 2, 1,
+            |ctx: &matrix::Context,
+             graph: &mut dl::Graph,
+             vars: &mut VarStore,
+             _in: &[Option<VarIndex>],
+             _out: &[VarIndex]| {
+                let a = *_in[0].unwrap().get(&vars);
+                let b = *_in[1].unwrap().get(&vars);
+                let out_shape = _out[0].get(vars).shape;
+                let op = dl::op::Mse::new();
+                let node = graph.add_node(ctx, op,
+                                          vec![a.gpu.unwrap(), b.gpu.unwrap()],
+                                          &[out_shape]);
+                _out[0].get_mut(vars).gpu = Some(node.get(&graph).outputs[0]);
+                let gradient = graph.add_gradient(ctx, node, 0);
+                gradient.get(graph)
+                        .set(ctx, &matrix::Matrix::from_vec(out_shape.0, out_shape.1, vec![-0.1]));
             }));
         let variable = Rc::new(Operation::new("Variable".to_string(), 0, 1,
             |ctx: &matrix::Context,
@@ -63,8 +94,8 @@ impl DeepLabUi {
                  _out[0].get_mut(vars).gpu = Some(graph.add_variable(ctx, (1, 1), dl::init::Normal(0.5, 0.2)));
             }));
         DeepLabUi {
-            activation_blocks: [[mat_mul.clone(), mat_mul.clone()],
-                                [variable.clone(), mat_mul.clone()]],
+            activation_blocks: [[mat_mul.clone(), relu.clone()],
+                                [variable.clone(), mse.clone()]],
             graph: GraphBuilder::new(),
             ctx: matrix::Context::new(),
 
@@ -137,7 +168,10 @@ impl DeepLabUi {
         // Construct our main `Canvas` tree.
         Canvas::new().flow_down(&[
             (UPPER, Canvas::new().flow_down(&[
-                (TOOL_BAR, Canvas::new().color(color::rgb(0.7, 0.7, 0.7)).length(48.0)),
+                (TOOL_BAR, Canvas::new().color(color::rgb(0.7, 0.7, 0.7)).length(48.0).flow_right(&[
+                    (BUILD_BTN_AREA, Canvas::new().color(color::rgb(0.7, 0.7, 0.7))),
+                    (RUN_BTN_AREA, Canvas::new().color(color::rgb(0.7, 0.7, 0.7))),
+                ])),
                 (GRAPH_AREA, Canvas::new().color(color::rgb(1.0, 1.0, 0.8))),
             ])),
             (LOWER, Canvas::new().color(color::rgb(1.0, 0.8, 1.0)).scroll_kids_vertically().flow_right(&[
@@ -153,11 +187,18 @@ impl DeepLabUi {
                                      .set(TITLE, ui);*/
 
         Button::new().rgb(0.3, 0.3, 0.8)
-                     .label("Build Graph")
-                     .middle_of(TOOL_BAR)
+                     .label("Build")
+                     .middle_of(BUILD_BTN_AREA)
                      .react(|| {
                          self.graph.gpu_build(&self.ctx);
                      }).set(BUILD_BTN, ui);
+
+        Button::new().rgb(0.3, 0.3, 0.8)
+                     .label("Run")
+                     .middle_of(RUN_BTN_AREA)
+                     .react(|| {
+                         self.graph.graph.run(&self.ctx);
+                     }).set(RUN_BTN, ui);
 
         let footer_wh = ui.wh_of(BLOCKS).unwrap();
         WidgetMatrix::new(2, 2)
@@ -181,8 +222,8 @@ impl DeepLabUi {
         if let Some((sel_var, ref coords)) = self.sel_var {
             let gpu_var = sel_var.get(&self.graph.vars).gpu.unwrap();
             let var_val = *gpu_var.get(&self.graph.graph).get(&self.ctx).get(coords[0], coords[1]);
-            //let var_rows = gpu_var.get(&self.graph.graph).get(&self.ctx).rows();
-            //let var_cols = gpu_var.get(&self.graph.graph).get(&self.ctx).columns();
+            let var_rows = gpu_var.get(&self.graph.graph).get(&self.ctx).rows();
+            let var_cols = gpu_var.get(&self.graph.graph).get(&self.ctx).columns();
 
             Slider::new(var_val, 0.0, 1.0)
                 .w_h(30.0, 150.0)
@@ -193,21 +234,16 @@ impl DeepLabUi {
                     // TODO
                 }).set(VAR_SLIDER, ui);
 
-            /*WidgetMatrix::new(2, 2)
-                .mid_top_of(VAR_MANIP)
+            WidgetMatrix::new(var_rows, var_cols)
+                .w_h(100.0, 100.0)
+                .middle_of(VAR_MANIP)
                 .each_widget(|n, col, row| {
-                    let op: Rc<Operation> = {
-                        let _row: &[Rc<Operation>; 2] = &self.activation_blocks[row];
-                        let op: &Rc<Operation> = &_row[col];
-                        op.clone()
-                    };
                     Button::new()
                         .rgb(0.3, 0.8, 0.3)
-                        .label(op.name.clone().as_ref())
                         .react(|| {
-                            self.place_op = Some(op);
+                            // TODO
                         })
-                }).set(ACTIVATION_BLOCK_MATRIX, ui);*/
+                }).set(VAR_MATRIX, ui);
         }
     }
 
@@ -228,12 +264,15 @@ widget_ids! {
     // Canvas IDs
     MASTER,
     TOOL_BAR,
+    BUILD_BTN_AREA,
+    RUN_BTN_AREA,
     GRAPH_AREA,
     UPPER,
     LOWER,
 
     // Widget IDs
     BUILD_BTN,
+    RUN_BTN,
     NODE,
     BLOCKS,
     ACTIVATION_BLOCK_MATRIX,
